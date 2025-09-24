@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Coin Switch - Crypto Mining App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary: #00276b;
+            --secondary: #0004ff;
+            --accent: #d0d707;
+            --accent-light: #ff8e53;
+            --usd-green: #62f500;
+            --dark: #00d0ff;
+            --darker: #0f0f1e;
+            --light: #f8f9fa;
+            --success: #32f800;
+            --warning: #07c5ff;
+            --danger: #dc3545;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-light: rgba(255, 255, 255, 0.12);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --gold: #FFD700;
+            --platinum: #E5E4E2;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            color: var(--light);
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Header Styles */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+            font-size: 22px;
+            color: white;
+            animation: logo-spin 10s infinite linear;
+        }
+
+        @keyframes logo-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(to right, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Balance Cards */
+        .balance-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
+        .balance-card.usd-card {
+            background: linear-gradient(135deg, #11998e, var(--usd-green));
+        }
+
+        .balance-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .balance-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .balance-amount {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: color 0.3s ease;
+        }
+        
+        .balance-amount.flash {
+            color: var(--warning);
+            animation: flash-anim 0.5s ease;
+        }
+
+        @keyframes flash-anim {
+            0% { transform: scale(1.1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1.1); }
+        }
+
+        .balance-subtext {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Mining Stats */
+        .mining-stats {
+            display: flex;
+            justify-content: space-between;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+            position: relative;
+        }
+        
+        .stat-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 40px;
+            width: 1px;
+            background: var(--glass-border);
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Tap Area - Enhanced with Big Bang Effect */
+        .tap-area {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border-radius: 25px;
+            padding: 40px 30px;
+            text-align: center;
+            margin-bottom: 25px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            position: relative;
+            animation: pulse 2s infinite ease-in-out;
+            overflow: hidden;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); }
+            50% { transform: scale(1.02); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3); }
+            100% { transform: scale(1); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); }
+        }
+
+        .tap-area.bang-effect {
+            animation: bang 0.5s ease-out;
+        }
+
+        @keyframes bang {
+            0% { transform: scale(1); background: var(--glass); }
+            25% { transform: scale(1.1); background: rgba(255, 215, 0, 0.3); }
+            50% { transform: scale(1.2); background: rgba(255, 140, 0, 0.5); box-shadow: 0 0 50px gold; }
+            75% { transform: scale(1.1); background: rgba(255, 215, 0, 0.3); }
+            100% { transform: scale(1); background: var(--glass); }
+        }
+
+        .tap-area:active {
+            transform: scale(0.97) !important;
+            animation: none;
+        }
+
+        .tap-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: var(--accent);
+            text-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+            transition: all 0.3s;
+        }
+
+        .tap-text {
+            font-size: 22px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .tap-subtext {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Floating Coins - Enhanced */
+        .floating-coin {
+            position: absolute;
+            font-size: 20px;
+            color: gold;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            animation: float-up 1.5s ease-out forwards;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        }
+        
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.5); }
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 20px;
+            margin: 25px 0 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--glass-border);
+            position: relative;
+            font-weight: 600;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(to right, var(--accent), var(--accent-light));
+            border-radius: 3px;
+        }
+
+        /* Packages - Enhanced */
+        .packages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .package {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .package::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .package:hover::before {
+            left: 100%;
+        }
+
+        .package:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .package-premium {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 142, 83, 0.15));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            grid-column: 1 / -1;
+            position: relative;
+        }
+
+        .package-premium::after {
+            content: 'BEST VALUE';
+            position: absolute;
+            top: 10px;
+            right: -30px;
+            background: var(--gold);
+            color: black;
+            padding: 5px 30px;
+            font-size: 12px;
+            font-weight: bold;
+            transform: rotate(45deg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .package-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+
+        .package-price {
+            font-size: 20px;
+            color: var(--accent);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .package-premium .package-price {
+            color: var(--usd-green);
+        }
+
+        .package-features {
+            font-size: 13px;
+            margin-bottom: 18px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(38, 117, 252, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(38, 117, 252, 0.4);
+        }
+        
+        .btn:disabled {
+            background: gray;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, var(--usd-green), #11998e);
+            box-shadow: 0 5px 15px rgba(33, 206, 153, 0.3);
+        }
+
+        /* Tabs */
+        .tabs-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 15px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            white-space: nowrap;
+            padding: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            flex: 0 0 auto;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            position: relative;
+            min-width: 80px;
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+        
+        .tab.active::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background: linear-gradient(to right, var(--accent), var(--accent-light));
+            transition: width 0.3s;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            display: none;
+        }
+
+        .tab-nav:hover {
+            opacity: 1;
+        }
+
+        .tab-nav.left {
+            left: -15px;
+        }
+
+        .tab-nav.right {
+            right: -15px;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Content Box */
+        .content-box {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .content-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(to right, var(--accent), var(--accent-light));
+        }
+
+        .address-box {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 13px;
+            word-break: break-all;
+            margin: 15px 0;
+            text-align: center;
+            font-family: monospace;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--glass-light);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent);
+            color: black;
+        }
+        
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.15);
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(208, 215, 7, 0.3);
+        }
+
+        /* Support Link */
+        .support-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            margin-top: 25px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 15px;
+            background: var(--glass);
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s;
+        }
+        
+        .support-link:hover {
+            background: rgba(255, 107, 107, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 35px;
+            padding: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Big Bang Notification */
+        .big-bang-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, gold, orange);
+            color: black;
+            padding: 20px 30px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 24px;
+            text-align: center;
+            z-index: 2000;
+            box-shadow: 0 0 50px gold;
+            opacity: 0;
+            transition: all 0.5s;
+        }
+
+        .big-bang-notification.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 480px) {
+            .balance-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .mining-stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .stat-item:not(:last-child)::after {
+                display: none;
+            }
+            
+            .tap-area {
+                padding: 30px 20px;
+            }
+            
+            .tap-icon {
+                font-size: 50px;
+            }
+            
+            .tap-text {
+                font-size: 20px;
+            }
+            
+            .package {
+                padding: 15px;
+            }
+            
+            .tab {
+                padding: 12px 10px;
+                min-width: 70px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <div class="logo"><i class="fas fa-coins"></i></div>
+                <div class="logo-text">Coin Switch</div>
+            </div>
+            <p class="subtitle">Tap to Mine CS Tokens and Earn USD</p>
+            <div class="user-level" style="margin-top: 10px; font-size: 12px; background: rgba(255,215,0,0.2); padding: 5px 10px; border-radius: 10px; display: inline-block;">
+                Level: <span id="user-level">1</span> | XP: <span id="user-xp">0</span>/100
+            </div>
+        </header>
+
+        <div class="balance-cards">
+            <div class="balance-card">
+                <div class="balance-title">CS Token Balance</div>
+                <div class="balance-amount" id="cs-balance">0.00 CS</div>
+                <div class="balance-subtext" id="cs-balance-usd">≈ $0.00</div>
+            </div>
+            <div class="balance-card usd-card">
+                <div class="balance-title">USD Balance</div>
+                <div class="balance-amount" id="usd-balance">$0.00</div>
+                <div class="balance-subtext">From Mining & Deposits</div>
+            </div>
+        </div>
+
+        <div class="mining-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="mining-speed">0.0 CS/hr</div>
+                <div class="stat-label">Mining Speed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="hash-power">0 H/s</div>
+                <div class="stat-label">Hash Power</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="usd-mining">$0.00/day</div>
+                <div class="stat-label">USD Earnings</div>
+            </div>
+        </div>
+
+        <div class="tap-area" id="tap-button">
+            <div class="tap-icon"><i class="fas fa-hand-pointer"></i></div>
+            <div class="tap-text">Tap to Mine</div>
+            <div class="tap-subtext" id="tap-cooldown-text">Ready to Tap</div>
+            <div class="combo-counter" style="position: absolute; top: 10px; right: 10px; background: rgba(255,0,0,0.7); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; display: none;">
+                Combo: <span id="combo-count">0</span>x
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tab-nav left"><i class="fas fa-chevron-left"></i></div>
+            <div class="tabs" id="tabs-scroll">
+                <div class="tab active" data-tab="packages">Packages</div>
+                <div class="tab" data-tab="wallet">Wallet</div>
+                <div class="tab" data-tab="deposit">Deposit</div>
+                <div class="tab" data-tab="withdraw">Withdraw</div>
+                <div class="tab" data-tab="referral">Referrals</div>
+            </div>
+            <div class="tab-nav right"><i class="fas fa-chevron-right"></i></div>
+        </div>
+        
+        <!-- Packages Tab -->
+        <div class="tab-content active" id="packages-tab">
+            <div class="section-title">Hash Power Packages</div>
+            <div class="packages" id="packages-container">
+                <!-- Packages will be dynamically inserted here by JS -->
+            </div>
+        </div>
+
+        <!-- Wallet Tab -->
+        <div class="tab-content" id="wallet-tab">
+             <div class="section-title">Your Wallet</div>
+             <div class="content-box">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <i class="fas fa-wallet" style="font-size: 50px; color: var(--accent); margin-bottom: 15px;"></i>
+                    <h3>Total Estimated Value</h3>
+                    <div style="font-size: 32px; font-weight: bold; margin: 10px 0;" id="total-balance-usd">$0.00</div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.8;">CS Tokens</div>
+                        <div style="font-size: 20px; font-weight: bold;" id="wallet-cs">0.00 CS</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 14px; opacity: 0.8;">USD Balance</div>
+                        <div style="font-size: 20px; font-weight: bold;" id="wallet-usd">$0.00</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; background: rgba(33, 206, 153, 0.1); padding: 15px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 14px;">Daily USD Earnings</div>
+                    <div style="font-size: 24px; font-weight: bold; color: var(--usd-green);" id="daily-usd-earnings">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deposit Tab -->
+        <div class="tab-content" id="deposit-tab">
+            <div class="section-title">Deposit Funds</div>
+            <div class="content-box">
+                <p>Deposit USDT (TRC20) to the address below. After transaction, submit your deposit request for manual approval by admin.</p>
+                <div class="address-box">
+                    <span id="deposit-address-text">TSPQ8Xk4LHNMoL7P6AS1YtYrHRYPM1fhNS</span>
+                    <button class="copy-btn" id="copy-address-btn"><i class="far fa-copy"></i></button>
+                </div>
+                 <div class="form-group">
+                    <label for="deposit-amount">Deposit Amount (USD)</label>
+                    <input type="number" id="deposit-amount" placeholder="e.g., 50" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="transaction-hash">Transaction Hash (Optional)</label>
+                    <input type="text" id="transaction-hash" placeholder="Enter transaction hash if available">
+                </div>
+                <button class="btn" id="submit-deposit-btn">Submit Deposit Request</button>
+                <p style="font-size: 12px; text-align: center; margin-top: 15px; opacity: 0.7;">
+                    Deposit requests are manually approved by admin within 24 hours.
+                </p>
+            </div>
+        </div>
+
+        <!-- Withdraw Tab -->
+        <div class="tab-content" id="withdraw-tab">
+            <div class="section-title">Withdraw Funds</div>
+            <div class="content-box">
+                 <div style="text-align: center; margin-bottom: 20px;">
+                    <i class="fas fa-money-bill-wave" style="font-size: 50px; color: var(--usd-green); margin-bottom: 15px;"></i>
+                    <h3>Withdraw USD</h3>
+                    <p>Minimum withdrawal amount: <strong>$10.00</strong></p>
+                </div>
+                <div class="form-group">
+                    <label for="withdraw-amount">Amount to Withdraw</label>
+                    <input type="number" id="withdraw-amount" placeholder="10.00" min="10">
+                </div>
+                <div class="form-group">
+                    <label for="usdt-address">Your USDT (TRC20) Address</label>
+                    <input type="text" id="usdt-address" placeholder="Enter your USDT address">
+                </div>
+                <button class="btn btn-premium" id="withdraw-btn">Request Withdraw</button>
+                <p style="font-size: 12px; text-align: center; margin-top: 15px; opacity: 0.7;">
+                    Withdrawal requests are manually processed by admin within 24 hours.
+                </p>
+            </div>
+        </div>
+
+        <!-- Referral Tab -->
+        <div class="tab-content" id="referral-tab">
+            <div class="section-title">Referral System</div>
+            <div class="content-box" style="text-align: center;">
+                <div style="margin-bottom: 25px;">
+                    <div style="font-size: 14px; opacity: 0.8; margin-bottom: 5px;">Total Referrals</div>
+                    <div id="referral-count" style="font-size: 36px; font-weight: bold; color: var(--accent);">0</div>
+                    <div style="font-size: 14px; margin-top: 5px;">Earn 10% of your referrals' mining rewards!</div>
+                </div>
+                <p>Your Referral Link:</p>
+                <div class="address-box">
+                    <span id="referral-link-text">https://t.me/CoinSwitchMain_bot?start=ref123456</span>
+                    <button class="copy-btn" id="copy-ref-btn"><i class="far fa-copy"></i></button>
+                </div>
+                <button class="btn" id="share-link-btn" style="margin-top: 15px;">Share Link</button>
+            </div>
+        </div>
+
+        <!-- Support Link -->
+        <a href="https://t.me/Blockchain_423" class="support-link" target="_blank">
+            <i class="fab fa-telegram"></i> Contact Support
+        </a>
+
+        <footer>
+            Coin Switch &copy; 2025 | All Rights Reserved
+        </footer>
+    </div>
+    
+    <!-- Notifications -->
+    <div class="notification" id="notification">
+        <i id="notification-icon" class="fas fa-check-circle"></i>
+        <span id="notification-text">Notification Text</span>
+    </div>
+
+    <!-- Big Bang Notification -->
+    <div class="big-bang-notification" id="big-bang-notification">
+        <div>BIG BANG!</div>
+        <div style="font-size: 16px; margin-top: 5px;">+12 CS Tokens!</div>
+    </div>
+
+    <script>
+        // Firebase configuration - Replace with your Firebase project config
+       const firebaseConfig = {
+  apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
+  authDomain: "coinswitchmain-16c88.firebaseapp.com",
+  projectId: "coinswitchmain-16c88",
+  storageBucket: "coinswitchmain-16c88.firebasestorage.app",
+  messagingSenderId: "61325978069",
+  appId: "1:61325978069:web:e376a1aed8c77851edb55c",
+  measurementId: "G-JMY3WMJJ6B"
+};
+
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- CONFIGURATION ---
+            const CS_TOKEN_PRICE = 0.05;
+            const TAP_REWARD = 0.5;
+            const TAP_COOLDOWN = 5000; // Changed to 5 seconds as requested
+            const HASH_TO_CS_PER_HOUR = 0.05;
+            const MIN_WITHDRAWAL = 10;
+            const BOT_USERNAME = 'CoinSwitchMain_bot';
+            const COMBO_TIMEOUT = 5000; // 5 seconds to maintain combo
+            
+            const PACKAGES = [
+                { id: 'basic', title: 'Basic Pack', price: 20, hash_power: 50, bonus_cs: 2, is_premium: false },
+                { id: 'premium', title: 'Premium Pack', price: 30, hash_power: 100, bonus_cs: 5, is_premium: false },
+                { id: 'gold', title: 'Gold Pack', price: 50, hash_power: 200, bonus_cs: 10, is_premium: false },
+                { id: 'exclusive', title: 'Exclusive USD Pack', price: 222, hash_power: 1000, daily_usd: 1.82, is_premium: true }
+            ];
+
+            // --- TELEGRAM OBJECT ---
+            const tg = window.Telegram.WebApp;
+
+            // --- STATE MANAGEMENT ---
+            let state = {
+                csBalance: 0,
+                usdBalance: 0,
+                hashPower: 10,
+                dailyUsdReward: 0,
+                lastTapTime: 0,
+                purchasedPackages: [],
+                referralCount: 0,
+                referralCsEarnings: 0,
+                minedUsdBalance: 0,
+                lastPassiveUpdate: Date.now(),
+                userId: null,
+                userLevel: 1,
+                userXP: 0,
+                comboCount: 0,
+                lastComboTime: 0
+            };
+
+            // --- FIREBASE FUNCTIONS ---
+            const getUserId = () => {
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    return `tg_${tg.initDataUnsafe.user.id}`;
+                }
+                
+                let userId = localStorage.getItem('coinSwitchUserId');
+                if (!userId) {
+                    userId = 'user_' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('coinSwitchUserId', userId);
+                }
+                return userId;
+            };
+
+            const loadUserData = async () => {
+                try {
+                    state.userId = getUserId();
+                    const userDoc = await db.collection('users').doc(state.userId).get();
+                    
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        Object.assign(state, userData);
+                        
+                        // Calculate offline earnings
+                        const now = Date.now();
+                        const timePassedInSeconds = (now - state.lastPassiveUpdate) / 1000;
+                        
+                        if (timePassedInSeconds > 0) {
+                            const hourlyCsGain = state.hashPower * HASH_TO_CS_PER_HOUR;
+                            const hourlyUsdGain = state.dailyUsdReward / 24;
+                            
+                            const csGained = hourlyCsGain / 3600 * timePassedInSeconds;
+                            const usdGained = hourlyUsdGain / 3600 * timePassedInSeconds;
+
+                            state.csBalance += csGained;
+                            if (usdGained > 0) {
+                                state.usdBalance += usdGained;
+                                state.minedUsdBalance += usdGained;
+                            }
+                            state.lastPassiveUpdate = now;
+                            
+                            // Save updated state
+                            await saveUserData();
+                        }
+                    } else {
+                        // New user - initialize with default values
+                        state.userId = getUserId();
+                        state.lastPassiveUpdate = Date.now();
+                        await saveUserData();
+                    }
+                } catch (error) {
+                    console.error("Error loading user data:", error);
+                    showNotification("Error loading data. Using local storage.", "error");
+                    
+                    // Fallback to localStorage
+                    const savedState = localStorage.getItem('coinSwitchState');
+                    if (savedState) {
+                        state = { ...state, ...JSON.parse(savedState) };
+                    }
+                }
+            };
+
+            const saveUserData = async () => {
+                try {
+                    await db.collection('users').doc(state.userId).set(state, { merge: true });
+                    // Also save to localStorage as backup
+                    localStorage.setItem('coinSwitchState', JSON.stringify(state));
+                } catch (error) {
+                    console.error("Error saving user data:", error);
+                    // Fallback to localStorage
+                    localStorage.setItem('coinSwitchState', JSON.stringify(state));
+                }
+            };
+
+            // --- DOM ELEMENTS ---
+            const dom = {
+                csBalance: document.getElementById('cs-balance'),
+                csBalanceUsd: document.getElementById('cs-balance-usd'),
+                usdBalance: document.getElementById('usd-balance'),
+                miningSpeed: document.getElementById('mining-speed'),
+                hashPower: document.getElementById('hash-power'),
+                usdMining: document.getElementById('usd-mining'),
+                tapButton: document.getElementById('tap-button'),
+                tapCooldownText: document.getElementById('tap-cooldown-text'),
+                packagesContainer: document.getElementById('packages-container'),
+                walletCs: document.getElementById('wallet-cs'),
+                walletUsd: document.getElementById('wallet-usd'),
+                totalBalanceUsd: document.getElementById('total-balance-usd'),
+                dailyUsdEarnings: document.getElementById('daily-usd-earnings'),
+                depositAmountInput: document.getElementById('deposit-amount'),
+                transactionHashInput: document.getElementById('transaction-hash'),
+                submitDepositBtn: document.getElementById('submit-deposit-btn'),
+                withdrawAmountInput: document.getElementById('withdraw-amount'),
+                usdtAddressInput: document.getElementById('usdt-address'),
+                withdrawBtn: document.getElementById('withdraw-btn'),
+                notification: document.getElementById('notification'),
+                notificationIcon: document.getElementById('notification-icon'),
+                notificationText: document.getElementById('notification-text'),
+                copyAddressBtn: document.getElementById('copy-address-btn'),
+                copyRefBtn: document.getElementById('copy-ref-btn'),
+                shareLinkBtn: document.getElementById('share-link-btn'),
+                depositAddressText: document.getElementById('deposit-address-text').textContent,
+                referralLinkTextElement: document.getElementById('referral-link-text'),
+                referralCount: document.getElementById('referral-count'),
+                tabsContainer: document.getElementById('tabs-scroll'),
+                tabNavLeft: document.querySelector('.tab-nav.left'),
+                tabNavRight: document.querySelector('.tab-nav.right'),
+                comboCounter: document.querySelector('.combo-counter'),
+                comboCount: document.getElementById('combo-count'),
+                userLevel: document.getElementById('user-level'),
+                userXP: document.getElementById('user-xp'),
+                bigBangNotification: document.getElementById('big-bang-notification')
+            };
+
+            // --- UI UPDATE FUNCTIONS ---
+            const updateUI = () => {
+                const csBalanceUSDValue = state.csBalance * CS_TOKEN_PRICE;
+                const totalBalanceValue = state.usdBalance + csBalanceUSDValue;
+                dom.csBalance.textContent = `${state.csBalance.toFixed(4)} CS`;
+                dom.csBalanceUsd.textContent = `≈ $${csBalanceUSDValue.toFixed(2)}`;
+                dom.usdBalance.textContent = `$${state.usdBalance.toFixed(2)}`;
+                const hourlyCsMining = state.hashPower * HASH_TO_CS_PER_HOUR;
+                dom.miningSpeed.textContent = `${hourlyCsMining.toFixed(2)} CS/hr`;
+                dom.hashPower.textContent = `${state.hashPower} H/s`;
+                dom.usdMining.textContent = `$${state.dailyUsdReward.toFixed(2)}/day`;
+                dom.walletCs.textContent = `${state.csBalance.toFixed(4)} CS`;
+                dom.walletUsd.textContent = `$${state.usdBalance.toFixed(2)}`;
+                dom.totalBalanceUsd.textContent = `$${totalBalanceValue.toFixed(2)}`;
+                dom.dailyUsdEarnings.textContent = `$${state.dailyUsdReward.toFixed(2)}`;
+                dom.referralCount.textContent = state.referralCount;
+                dom.userLevel.textContent = state.userLevel;
+                dom.userXP.textContent = state.userXP;
+                
+                // Update combo counter
+                if (state.comboCount > 1) {
+                    dom.comboCounter.style.display = 'block';
+                    dom.comboCount.textContent = state.comboCount;
+                } else {
+                    dom.comboCounter.style.display = 'none';
+                }
+            };
+            
+            const flashElement = (element) => {
+                element.classList.add('flash');
+                setTimeout(() => element.classList.remove('flash'), 500);
+            };
+
+            const showNotification = (message, type = 'success') => {
+                dom.notificationText.textContent = message;
+                let iconClass = 'fas fa-check-circle', bgColor = 'var(--success)';
+                if (type === 'warning') { iconClass = 'fas fa-exclamation-triangle'; bgColor = 'var(--warning)'; }
+                else if (type === 'error') { iconClass = 'fas fa-times-circle'; bgColor = 'var(--danger)'; }
+                else if (type === 'info') { iconClass = 'fas fa-info-circle'; bgColor = 'var(--primary)'; }
+                dom.notificationIcon.className = iconClass;
+                dom.notification.style.background = bgColor;
+                dom.notification.classList.add('show');
+                setTimeout(() => dom.notification.classList.remove('show'), 3000);
+            };
+
+            // --- CORE LOGIC ---
+            const handleTap = async (e) => {
+                const now = Date.now();
+                if (now - state.lastTapTime < TAP_COOLDOWN) {
+                    const timeLeft = Math.ceil((TAP_COOLDOWN - (now - state.lastTapTime)) / 1000);
+                    showNotification(`Please wait ${timeLeft} more seconds`, 'warning');
+                    return;
+                }
+
+                // Check for combo
+                if (now - state.lastComboTime > COMBO_TIMEOUT) {
+                    state.comboCount = 0;
+                }
+                state.comboCount++;
+                state.lastComboTime = now;
+
+                // Calculate reward with combo bonus
+                let reward = TAP_REWARD;
+                if (state.comboCount >= 5) {
+                    reward *= 2; // 2x reward for 5+ combo
+                }
+                if (state.comboCount >= 10) {
+                    reward *= 3; // 3x reward for 10+ combo
+                }
+
+                state.lastTapTime = now;
+                state.csBalance += reward;
+
+                // Check for Big Bang (5 consecutive taps)
+                if (state.comboCount === 5) {
+                    const bigBangReward = 12; // Big Bang gives 12 CS tokens
+                    state.csBalance += bigBangReward;
+                    
+                    // Show big bang effect
+                    dom.tapButton.classList.add('bang-effect');
+                    setTimeout(() => {
+                        dom.tapButton.classList.remove('bang-effect');
+                    }, 500);
+                    
+                    // Show big bang notification
+                    dom.bigBangNotification.querySelector('div:last-child').textContent = `+${bigBangReward} CS Tokens!`;
+                    dom.bigBangNotification.classList.add('show');
+                    setTimeout(() => {
+                        dom.bigBangNotification.classList.remove('show');
+                    }, 2000);
+                    
+                    showNotification(`Big Bang! +${bigBangReward} CS Tokens!`, 'success');
+                }
+
+                // Add XP
+                state.userXP += 1;
+                checkLevelUp();
+
+                updateUI();
+                flashElement(dom.csBalance);
+                createFloatingCoin(e);
+                updateTapCooldown();
+                await saveUserData();
+
+                // Show combo notification for high combos
+                if (state.comboCount === 5) {
+                    showNotification('Combo x2! Double rewards activated!', 'success');
+                } else if (state.comboCount === 10) {
+                    showNotification('Combo x3! Triple rewards activated!', 'success');
+                }
+            };
+            
+            const createFloatingCoin = (e) => {
+                const coin = document.createElement('div');
+                coin.classList.add('floating-coin');
+                coin.innerHTML = '<i class="fas fa-coins"></i>';
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+                coin.style.left = `${clientX}px`;
+                coin.style.top = `${clientY}px`;
+                document.body.appendChild(coin);
+                setTimeout(() => coin.remove(), 1500);
+            };
+
+            const updateTapCooldown = () => {
+                const now = Date.now();
+                const timePassed = now - state.lastTapTime;
+                if (timePassed >= TAP_COOLDOWN) { 
+                    dom.tapCooldownText.textContent = "Ready to Tap"; 
+                    return; 
+                }
+                const timeLeft = Math.ceil((TAP_COOLDOWN - timePassed) / 1000);
+                dom.tapCooldownText.textContent = `Cooldown: ${timeLeft}s`;
+            };
+            
+            // Level up system
+            const checkLevelUp = () => {
+                const xpNeeded = state.userLevel * 100;
+                if (state.userXP >= xpNeeded) {
+                    state.userLevel++;
+                    state.userXP = 0;
+                    showNotification(`Level Up! You're now Level ${state.userLevel}`, 'success');
+                    
+                    // Level up bonus
+                    state.hashPower += state.userLevel * 5;
+                    updateUI();
+                }
+            };
+            
+            // --- PASSIVE MINING ---
+            const passiveMining = async () => {
+                const now = Date.now();
+                const timePassedInSeconds = (now - state.lastPassiveUpdate) / 1000;
+                state.lastPassiveUpdate = now;
+
+                if (timePassedInSeconds <= 0) return;
+
+                const hourlyCsGain = state.hashPower * HASH_TO_CS_PER_HOUR;
+                const hourlyUsdGain = state.dailyUsdReward / 24;
+                
+                const csGained = hourlyCsGain / 3600 * timePassedInSeconds;
+                const usdGained = hourlyUsdGain / 3600 * timePassedInSeconds;
+
+                state.csBalance += csGained;
+                if (usdGained > 0) {
+                    state.usdBalance += usdGained;
+                    state.minedUsdBalance += usdGained;
+                }
+                updateUI();
+                await saveUserData();
+            };
+
+            const initializePackages = () => {
+                dom.packagesContainer.innerHTML = '';
+                PACKAGES.forEach(pkg => {
+                    const isPurchased = state.purchasedPackages.includes(pkg.id);
+                    const packageEl = document.createElement('div');
+                    packageEl.className = `package ${pkg.is_premium ? 'package-premium' : ''}`;
+                    packageEl.innerHTML = `
+                        <div class="package-title">${pkg.title}</div>
+                        <div class="package-price">$${pkg.price}</div>
+                        <div class="package-features">
+                            +${pkg.hash_power} H/s Hash Power<br>
+                            ${pkg.daily_usd ? `Daily $${pkg.daily_usd} USD Earning` : `+${pkg.bonus_cs} CS Bonus`}
+                        </div>
+                        <button class="btn ${pkg.is_premium ? 'btn-premium' : ''}" data-package-id="${pkg.id}" ${isPurchased ? 'disabled' : ''}>
+                            ${isPurchased ? 'Purchased' : 'Buy Now'}
+                        </button>`;
+                    dom.packagesContainer.appendChild(packageEl);
+                });
+                dom.packagesContainer.addEventListener('click', async (e) => {
+                    if (e.target.dataset.packageId) {
+                        await buyPackage(e.target.dataset.packageId);
+                    }
+                });
+            };
+            
+            const buyPackage = async (packageId) => {
+                const pkg = PACKAGES.find(p => p.id === packageId);
+                if (!pkg || state.purchasedPackages.includes(packageId)) return;
+                if (state.usdBalance < pkg.price) {
+                    showNotification('Insufficient USD balance. Please deposit funds.', 'error');
+                    switchTab('deposit');
+                    return;
+                }
+                state.usdBalance -= pkg.price;
+                state.hashPower += pkg.hash_power;
+                if (pkg.daily_usd) state.dailyUsdReward += pkg.daily_usd;
+                if (pkg.bonus_cs) state.csBalance += pkg.bonus_cs;
+                state.purchasedPackages.push(packageId);
+                showNotification(`${pkg.title} purchased successfully!`, 'success');
+                updateUI();
+                initializePackages();
+                await saveUserData();
+            };
+
+            const handleDeposit = async () => {
+                const amount = parseFloat(dom.depositAmountInput.value);
+                const transactionHash = dom.transactionHashInput.value.trim();
+                
+                if (!amount || amount <= 0) { 
+                    showNotification('Please enter a valid amount.', 'error'); 
+                    return; 
+                }
+
+                try {
+                    // Save deposit request to Firebase for admin approval
+                    await db.collection('deposits').add({
+                        userId: state.userId,
+                        amount: amount,
+                        transactionHash: transactionHash,
+                        status: 'pending',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showNotification(`Deposit request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
+                    dom.depositAmountInput.value = '';
+                    dom.transactionHashInput.value = '';
+                    await saveUserData();
+                } catch (error) {
+                    console.error("Error saving deposit request:", error);
+                    showNotification("Error submitting deposit request. Please try again.", "error");
+                }
+            };
+
+            const handleWithdraw = async () => {
+                const amount = parseFloat(dom.withdrawAmountInput.value);
+                const address = dom.usdtAddressInput.value.trim();
+
+                if (!amount || amount < MIN_WITHDRAWAL) { 
+                    showNotification(`Minimum withdrawal is $${MIN_WITHDRAWAL}.`, 'error'); 
+                    return; 
+                }
+                if (amount > state.usdBalance) { 
+                    showNotification('Insufficient USD balance.', 'error'); 
+                    return; 
+                }
+                if (!address || address.length < 26) { 
+                    showNotification('Please enter a valid USDT TRC20 address.', 'error'); 
+                    return; 
+                }
+
+                try {
+                    // Save withdrawal request to Firebase for admin approval
+                    await db.collection('withdrawals').add({
+                        userId: state.userId,
+                        amount: amount,
+                        usdtAddress: address,
+                        status: 'pending',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showNotification(`Withdrawal request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
+                    dom.withdrawAmountInput.value = '';
+                    dom.usdtAddressInput.value = '';
+                    await saveUserData();
+                } catch (error) {
+                    console.error("Error saving withdrawal request:", error);
+                    showNotification("Error processing withdrawal. Please try again.", "error");
+                }
+            };
+            
+            // --- REFERRAL SYSTEM ---
+            const registerReferral = async (referrerId) => {
+                try {
+                    // Update referrer's stats
+                    await db.collection('users').doc(referrerId).update({
+                        referralCount: firebase.firestore.FieldValue.increment(1)
+                    });
+                    
+                    showNotification(`Welcome! You were invited by a friend.`, 'info');
+                } catch (error) {
+                    console.error("Error registering referral:", error);
+                }
+            };
+
+            // --- TABS, SCROLLING, MOBILE SUPPORT ---
+            const switchTab = (tabId) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            };
+            document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
+
+            // --- INITIALIZATION ---
+            const init = async () => {
+                try { 
+                    tg.expand(); 
+                    tg.enableClosingConfirmation(); 
+                } catch (e) { 
+                    console.warn("Telegram script not found. Running in browser mode."); 
+                }
+
+                await loadUserData();
+
+                // Generate referral link
+                const userId = tg.initDataUnsafe?.user?.id || state.userId;
+                const referralLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+                dom.referralLinkTextElement.textContent = referralLink;
+
+                // Check for referral
+                const startParam = tg.initDataUnsafe?.start_param;
+                if (startParam && startParam.startsWith('ref_')) {
+                    const referrerId = startParam.replace('ref_', '');
+                    if (referrerId && referrerId !== state.userId) {
+                        await registerReferral(referrerId);
+                    }
+                }
+
+                initializePackages();
+                updateUI();
+                
+                // Setup event listeners
+                dom.tapButton.addEventListener('click', handleTap);
+                dom.submitDepositBtn.addEventListener('click', handleDeposit);
+                dom.withdrawBtn.addEventListener('click', handleWithdraw);
+                
+                // Copy buttons
+                dom.copyAddressBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(dom.depositAddressText);
+                    showNotification('Address copied to clipboard!', 'success');
+                });
+                
+                dom.copyRefBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(referralLink);
+                    showNotification('Referral link copied!', 'success');
+                });
+                
+                dom.shareLinkBtn.addEventListener('click', () => {
+                    if (tg.isTelegramApp) {
+                        tg.shareLink(referralLink, 'Join Coin Switch and earn rewards!');
+                    } else {
+                        navigator.clipboard.writeText(referralLink);
+                        showNotification('Referral link copied! Share it with your friends.', 'success');
+                    }
+                });
+
+                // Start intervals
+                setInterval(passiveMining, 5000);
+                setInterval(updateTapCooldown, 1000);
+                setInterval(saveUserData, 30000);
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>
