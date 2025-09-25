@@ -962,6 +962,7 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth(); // এই লাইনটি যোগ করুন
 
         document.addEventListener('DOMContentLoaded', async () => {
             // --- CONFIGURATION ---
@@ -1016,8 +1017,20 @@
                 return userId;
             };
 
+            const signInAnonymously = async () => {
+                try {
+                    if (!auth.currentUser) {
+                        await auth.signInAnonymously();
+                    }
+                } catch (error) {
+                    console.error("Anonymous sign-in failed:", error);
+                    showNotification("Failed to connect to server.", "error");
+                }
+            };
+
             const loadUserData = async () => {
                 try {
+                    await signInAnonymously(); // এই লাইনটি যোগ করুন
                     state.userId = getUserId();
                     const userDoc = await db.collection('users').doc(state.userId).get();
                     
