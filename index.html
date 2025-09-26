@@ -12,6 +12,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script> <!-- এই লাইনটি যোগ করুন -->
     <style>
         :root {
             --primary: #00276b;
@@ -949,22 +950,22 @@
     <script>
         // Firebase configuration - Replace with your Firebase project config
        const firebaseConfig = {
-  apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
-  authDomain: "coinswitchmain-16c88.firebaseapp.com",
-  projectId: "coinswitchmain-16c88",
-  storageBucket: "coinswitchmain-16c88.firebasestorage.app",
-  messagingSenderId: "61325978069",
-  appId: "1:61325978069:web:e376a1aed8c77851edb55c",
-  measurementId: "G-JMY3WMJJ6B"
-};
+            apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
+            authDomain: "coinswitchmain-16c88.firebaseapp.com",
+            projectId: "coinswitchmain-16c88",
+            storageBucket: "coinswitchmain-16c88.firebasestorage.app",
+            messagingSenderId: "61325978069",
+            appId: "1:61325978069:web:e376a1aed8c77851edb55c",
+            measurementId: "G-JMY3WMJJ6B"
+        };
 
-
-        // Initialize Firebase
+        // Initialize Firebase App
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth(); // এই লাইনটি যোগ করুন
 
         document.addEventListener('DOMContentLoaded', async () => {
+            const auth = firebase.auth(); // <-- সঠিক জায়গায় আনা হয়েছে
+
             // --- CONFIGURATION ---
             const CS_TOKEN_PRICE = 0.05;
             const TAP_REWARD = 0.5;
@@ -1430,6 +1431,68 @@
                 }
             };
 
+            // --- INITIALIZATION ---
+            const init = async () => {
+                try { 
+                    tg.expand(); 
+                    tg.enableClosingConfirmation(); 
+                } catch (e) { 
+                    console.warn("Telegram script not found. Running in browser mode."); 
+                }
+
+                await loadUserData();
+
+                // Generate referral link
+                const referralLink = `https://t.me/${BOT_USERNAME}?start=${state.userId}`;
+                if (dom.referralLinkTextElement) {
+                    dom.referralLinkTextElement.textContent = referralLink;
+                }
+
+                // Check for referral
+                const startParam = tg.initDataUnsafe?.start_param;
+                if (startParam && startParam.startsWith('tg_')) {
+                    const referrerId = startParam;
+                    if (referrerId && referrerId !== state.userId && !state.referredBy) {
+                        await registerReferral(referrerId);
+                    }
+                }
+                
+                // --- Add All Event Listeners ---
+                dom.tapButton.addEventListener('click', handleTap);
+                dom.submitDepositBtn.addEventListener('click', handleDeposit);
+                dom.withdrawBtn.addEventListener('click', handleWithdraw);
+
+                dom.copyAddressBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(dom.depositAddressTextElement.textContent);
+                    showNotification('Address copied!', 'success');
+                });
+
+                dom.copyRefBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(dom.referralLinkTextElement.textContent);
+                    showNotification('Referral link copied!', 'success');
+                });
+
+                dom.shareLinkBtn.addEventListener('click', () => {
+                    if (tg && tg.openTelegramLink) {
+                        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(dom.referralLinkTextElement.textContent)}&text=${encodeURIComponent('Join me on Coin Switch and start mining!')}`;
+                        tg.openTelegramLink(shareUrl);
+                    } else {
+                        showNotification('Share feature available only in Telegram.', 'info');
+                    }
+                });
+                // --- End of Event Listeners ---
+
+                updateUI();
+                initializePackages();
+                
+                // Start intervals
+                setInterval(passiveMining, 5000);
+                setInterval(updateTapCooldown, 1000);
+                setInterval(saveUserData, 30000); // Save data every 30 seconds
+
+                handleHashLoad(); // Handle initial tab from URL
+            };
+
             // --- TABS, SCROLLING, MOBILE SUPPORT ---
             const switchTab = (tabName) => {
                 const tabs = document.querySelectorAll('.tab');
@@ -1477,11 +1540,9 @@
             window.addEventListener('load', handleHashLoad);
             window.addEventListener('hashchange', handleHashLoad);
 
-            // Initial load
-            await loadUserData();
-            updateUI();
-            initializePackages();
-            updateTapCooldown();
+            // Start everything
+            init();
+
         });
     </script>
 </body>
