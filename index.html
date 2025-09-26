@@ -1116,8 +1116,8 @@
                 copyAddressBtn: document.getElementById('copy-address-btn'),
                 copyRefBtn: document.getElementById('copy-ref-btn'),
                 shareLinkBtn: document.getElementById('share-link-btn'),
-                depositAddressText: document.getElementById('deposit-address-text').textContent,
-                referralLinkTextElement: document.getElementById('referral-link-text'),
+                depositAddressTextElement: document.getElementById('deposit-address-text'), // Corrected this line
+                referralLinkTextElement: document.getElementById('referral-link-text'), // Corrected this line
                 referralCount: document.getElementById('referral-count'),
                 tabsContainer: document.getElementById('tabs-scroll'),
                 tabNavLeft: document.querySelector('.tab-nav.left'),
@@ -1469,7 +1469,7 @@
                 
                 // Copy buttons
                 dom.copyAddressBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(dom.depositAddressText);
+                    navigator.clipboard.writeText(dom.depositAddressTextElement.textContent); // Corrected this line
                     showNotification('Address copied to clipboard!', 'success');
                 });
                 
