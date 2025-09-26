@@ -12,6 +12,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script> <!-- সঠিক জায়গায় আনা হয়েছে -->
     <style>
         :root {
             --primary: #00276b;
@@ -873,7 +874,7 @@
                     </div>
                     <div style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 12px; text-align: center;">
                         <div style="font-size: 14px; opacity: 0.8;">USD Balance</div>
-                        <div style="font-size: 20px; font-weight: bold;" id="wallet-usd">$0.00</div>
+                        <div style="font-size: 20px, font-weight: bold;" id="wallet-usd">$0.00</div>
                     </div>
                 </div>
                 
@@ -1026,7 +1027,8 @@
                 userXP: 0,
                 comboCount: 0,
                 lastComboTime: 0,
-                tapCount: 0 // Added tap counter for Big Bang
+                tapCount: 0, // Added tap counter for Big Bang
+                referralLink: '' // <-- এই লাইনটি যোগ করুন
             };
 
             // --- FIREBASE FUNCTIONS ---
@@ -1130,7 +1132,7 @@
                 copyAddressBtn: document.getElementById('copy-address-btn'),
                 copyRefBtn: document.getElementById('copy-ref-btn'),
                 shareLinkBtn: document.getElementById('share-link-btn'),
-                depositAddressText: document.getElementById('deposit-address-text').textContent,
+                depositAddressTextElement: document.getElementById('deposit-address-text'), // এলিমেন্ট হিসেবে নিন
                 referralLinkTextElement: document.getElementById('referral-link-text'),
                 referralCount: document.getElementById('referral-count'),
                 tabsContainer: document.getElementById('tabs-scroll'),
@@ -1348,7 +1350,7 @@
                     dom.packagesContainer.appendChild(packageEl);
                 });
                 dom.packagesContainer.addEventListener('click', async (e) => {
-                    if (e.target.dataset.packageId) {
+                    if (e.target.dataset.packageId) { // <-- ব্র্যাকেট যোগ করা হয়েছে
                         await buyPackage(e.target.dataset.packageId);
                     }
                 });
@@ -1447,6 +1449,11 @@
                         referralCount: firebase.firestore.FieldValue.increment(1)
                     });
                     
+                    // Mark the new user as referred to prevent re-triggering
+                    await db.collection('users').doc(state.userId).set({
+                        referredBy: referrerId
+                    }, { merge: true });
+
                     showNotification(`Welcome! You were invited by a friend.`, 'info');
                 } catch (error) {
                     console.error("Error registering referral:", error);
@@ -1473,16 +1480,17 @@
 
                 await loadUserData();
 
-                // Generate referral link
-                const userId = tg.initDataUnsafe?.user?.id || state.userId;
-                const referralLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
-                dom.referralLinkTextElement.textContent = referralLink;
+                // Generate and save referral link in state
+                const userIdForLink = tg.initDataUnsafe?.user?.id || state.userId.replace('tg_', '');
+                state.referralLink = `https://t.me/${BOT_USERNAME}?start=ref_${userIdForLink}`;
+                dom.referralLinkTextElement.textContent = state.referralLink;
 
                 // Check for referral
                 const startParam = tg.initDataUnsafe?.start_param;
                 if (startParam && startParam.startsWith('ref_')) {
                     const referrerId = startParam.replace('ref_', '');
-                    if (referrerId && referrerId !== state.userId) {
+                    // Check if user is new and not referring themselves
+                    if (referrerId && referrerId !== state.userId && !state.referredBy) {
                         await registerReferral(referrerId);
                     }
                 }
@@ -1497,12 +1505,12 @@
                 
                 // Copy buttons
                 dom.copyAddressBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(dom.depositAddressText);
+                    navigator.clipboard.writeText(dom.depositAddressTextElement.textContent); // .textContent ব্যবহার করুন
                     showNotification('Address copied to clipboard!', 'success');
                 });
                 
                 dom.copyRefBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(referralLink);
+                    navigator.clipboard.writeText(state.referralLink); // <-- state থেকে ব্যবহার করুন
                     showNotification('Referral link copied!', 'success');
                 });
                 
