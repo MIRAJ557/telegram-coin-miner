@@ -1419,82 +1419,10 @@
                         referralCount: firebase.firestore.FieldValue.increment(1)
                     });
                     
+                    // Mark the new user as referred to prevent re-triggering
+                    await db.collection('users').doc(state.userId).set({
+                        referredBy: referrerId
+                    }, { merge: true });
+
                     showNotification(`Welcome! You were invited by a friend.`, 'info');
-                } catch (error) {
-                    console.error("Error registering referral:", error);
-                }
-            };
-
-            // --- TABS, SCROLLING, MOBILE SUPPORT ---
-            const switchTab = (tabId) => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-                document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-                document.getElementById(`${tabId}-tab`).classList.add('active');
-            };
-            document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
-
-            // --- INITIALIZATION ---
-            const init = async () => {
-                try { 
-                    tg.expand(); 
-                    tg.enableClosingConfirmation(); 
-                } catch (e) { 
-                    console.warn("Telegram script not found. Running in browser mode."); 
-                }
-
-                await loadUserData();
-
-                // Generate referral link
-                const userId = tg.initDataUnsafe?.user?.id || state.userId;
-                const referralLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
-                dom.referralLinkTextElement.textContent = referralLink;
-
-                // Check for referral
-                const startParam = tg.initDataUnsafe?.start_param;
-                if (startParam && startParam.startsWith('ref_')) {
-                    const referrerId = startParam.replace('ref_', '');
-                    if (referrerId && referrerId !== state.userId) {
-                        await registerReferral(referrerId);
-                    }
-                }
-
-                initializePackages();
-                updateUI();
-                
-                // Setup event listeners
-                dom.tapButton.addEventListener('click', handleTap);
-                dom.submitDepositBtn.addEventListener('click', handleDeposit);
-                dom.withdrawBtn.addEventListener('click', handleWithdraw);
-                
-                // Copy buttons
-                dom.copyAddressBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(dom.depositAddressTextElement.textContent); // Corrected this line
-                    showNotification('Address copied to clipboard!', 'success');
-                });
-                
-                dom.copyRefBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(referralLink);
-                    showNotification('Referral link copied!', 'success');
-                });
-                
-                dom.shareLinkBtn.addEventListener('click', () => {
-                    if (tg.isTelegramApp) {
-                        tg.shareLink(referralLink, 'Join Coin Switch and earn rewards!');
-                    } else {
-                        navigator.clipboard.writeText(referralLink);
-                        showNotification('Referral link copied! Share it with your friends.', 'success');
-                    }
-                });
-
-                // Start intervals
-                setInterval(passiveMining, 5000);
-                setInterval(updateTapCooldown, 1000);
-                setInterval(saveUserData, 30000);
-            };
-
-            init();
-        });
-    </script>
-</body>
-</html>
+                } catch
