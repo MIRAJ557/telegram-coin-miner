@@ -1425,4 +1425,64 @@
                     }, { merge: true });
 
                     showNotification(`Welcome! You were invited by a friend.`, 'info');
-                } catch
+                } catch (error) {
+                    console.error("Error registering referral:", error);
+                }
+            };
+
+            // --- TABS, SCROLLING, MOBILE SUPPORT ---
+            const switchTab = (tabName) => {
+                const tabs = document.querySelectorAll('.tab');
+                const contents = document.querySelectorAll('.tab-content');
+                
+                tabs.forEach(tab => {
+                    tab.classList.remove('active');
+                    if (tab.dataset.tab === tabName) {
+                        tab.classList.add('active');
+                    }
+                });
+                
+                contents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${tabName}-tab`) {
+                        content.classList.add('active');
+                    }
+                });
+                
+                // Update URL hash
+                window.location.hash = tabName;
+            };
+
+            const handleTabClick = (e) => {
+                const tab = e.target.closest('.tab');
+                if (!tab) return;
+                
+                const tabName = tab.dataset.tab;
+                switchTab(tabName);
+            };
+
+            dom.tabsContainer.addEventListener('click', handleTabClick);
+
+            // Handle URL hash on load
+            const handleHashLoad = () => {
+                const hash = window.location.hash.substring(1);
+                if (hash) {
+                    const tab = document.querySelector(`.tab[data-tab="${hash}"]`);
+                    if (tab) {
+                        switchTab(hash);
+                    }
+                }
+            };
+
+            window.addEventListener('load', handleHashLoad);
+            window.addEventListener('hashchange', handleHashLoad);
+
+            // Initial load
+            await loadUserData();
+            updateUI();
+            initializePackages();
+            updateTapCooldown();
+        });
+    </script>
+</body>
+</html>
