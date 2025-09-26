@@ -12,7 +12,6 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script> <!-- এই লাইনটি যোগ করুন -->
     <style>
         :root {
             --primary: #00276b;
@@ -104,8 +103,8 @@
             font-size: 28px;
             font-weight: bold;
             background: linear-gradient(to right, var(--accent), var(--accent-light));
+            background-clip: text; /* <-- এই স্ট্যান্ডার্ড লাইনটি যোগ করুন */
             -webkit-background-clip: text;
-            background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
@@ -918,7 +917,7 @@
                 </div>
                 <p>Your Referral Link:</p>
                 <div class="address-box">
-                    <span id="referral-link-text">https://t.me/CoinSwitchMain_bot?start=ref123456</span>
+                    <span id="referral-link-text">https://t.me/CoinSwitchMiningBot?start=ref123456</span>
                     <button class="copy-btn" id="copy-ref-btn"><i class="far fa-copy"></i></button>
                 </div>
                 <button class="btn" id="share-link-btn" style="margin-top: 15px;">Share Link</button>
@@ -950,29 +949,27 @@
     <script>
         // Firebase configuration - Replace with your Firebase project config
        const firebaseConfig = {
-            apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
-            authDomain: "coinswitchmain-16c88.firebaseapp.com",
-            projectId: "coinswitchmain-16c88",
-            storageBucket: "coinswitchmain-16c88.firebasestorage.app",
-            messagingSenderId: "61325978069",
-            appId: "1:61325978069:web:e376a1aed8c77851edb55c",
-            measurementId: "G-JMY3WMJJ6B"
-        };
+  apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
+  authDomain: "coinswitchmain-16c88.firebaseapp.com",
+  projectId: "coinswitchmain-16c88",
+  storageBucket: "coinswitchmain-16c88.firebasestorage.app",
+  messagingSenderId: "61325978069",
+  appId: "1:61325978069:web:e376a1aed8c77851edb55c",
+  measurementId: "G-JMY3WMJJ6B"
+};
 
-        // Initialize Firebase App
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const auth = firebase.auth(); // <-- সঠিক জায়গায় আনা হয়েছে
-
             // --- CONFIGURATION ---
             const CS_TOKEN_PRICE = 0.05;
             const TAP_REWARD = 0.5;
             const TAP_COOLDOWN = 5000; // Changed to 5 seconds as requested
             const HASH_TO_CS_PER_HOUR = 0.05;
             const MIN_WITHDRAWAL = 10;
-            const BOT_USERNAME = 'CoinSwitchMain_bot';
+            const BOT_USERNAME = 'CoinSwitchMiningBot';
             const COMBO_TIMEOUT = 5000; // 5 seconds to maintain combo
             
             const PACKAGES = [
@@ -1018,20 +1015,8 @@
                 return userId;
             };
 
-            const signInAnonymously = async () => {
-                try {
-                    if (!auth.currentUser) {
-                        await auth.signInAnonymously();
-                    }
-                } catch (error) {
-                    console.error("Anonymous sign-in failed:", error);
-                    showNotification("Failed to connect to server.", "error");
-                }
-            };
-
             const loadUserData = async () => {
                 try {
-                    await signInAnonymously(); // এই লাইনটি যোগ করুন
                     state.userId = getUserId();
                     const userDoc = await db.collection('users').doc(state.userId).get();
                     
@@ -1117,8 +1102,8 @@
                 copyAddressBtn: document.getElementById('copy-address-btn'),
                 copyRefBtn: document.getElementById('copy-ref-btn'),
                 shareLinkBtn: document.getElementById('share-link-btn'),
-                depositAddressTextElement: document.getElementById('deposit-address-text'), // Corrected this line
-                referralLinkTextElement: document.getElementById('referral-link-text'), // Corrected this line
+                depositAddressText: document.getElementById('deposit-address-text').textContent,
+                referralLinkTextElement: document.getElementById('referral-link-text'),
                 referralCount: document.getElementById('referral-count'),
                 tabsContainer: document.getElementById('tabs-scroll'),
                 tabNavLeft: document.querySelector('.tab-nav.left'),
@@ -1176,7 +1161,7 @@
             };
 
             // --- CORE LOGIC ---
-            const handleTap = async (e) => {
+            const handleTap = () => {
                 const now = Date.now();
                 if (now - state.lastTapTime < TAP_COOLDOWN) {
                     const timeLeft = Math.ceil((TAP_COOLDOWN - (now - state.lastTapTime)) / 1000);
@@ -1232,7 +1217,7 @@
                 flashElement(dom.csBalance);
                 createFloatingCoin(e);
                 updateTapCooldown();
-                await saveUserData();
+                saveUserData();
 
                 // Show combo notification for high combos
                 if (state.comboCount === 5) {
@@ -1321,7 +1306,7 @@
                     dom.packagesContainer.appendChild(packageEl);
                 });
                 dom.packagesContainer.addEventListener('click', async (e) => {
-                    if (e.target.dataset.packageId) {
+                    if (e.target.dataset.packageId) { // <-- ব্র্যাকেট যোগ করা হয়েছে
                         await buyPackage(e.target.dataset.packageId);
                     }
                 });
@@ -1337,212 +1322,33 @@
                 }
                 state.usdBalance -= pkg.price;
                 state.hashPower += pkg.hash_power;
-                if (pkg.daily_usd) state.dailyUsdReward += pkg.daily_usd;
-                if (pkg.bonus_cs) state.csBalance += pkg.bonus_cs;
-                state.purchasedPackages.push(packageId);
-                showNotification(`${pkg.title} purchased successfully!`, 'success');
+                if (pkg.bonus_cs) {
+                    state.csBalance += pkg.bonus_cs;
+                }
+                state.purchasedPackages.push(pkg.id);
+                showNotification(`Purchased ${pkg.title} successfully!`, 'success');
                 updateUI();
-                initializePackages();
                 await saveUserData();
-            };
-
-            const handleDeposit = async () => {
-                const amount = parseFloat(dom.depositAmountInput.value);
-                const transactionHash = dom.transactionHashInput.value.trim();
-                
-                if (!amount || amount <= 0) { 
-                    showNotification('Please enter a valid amount.', 'error'); 
-                    return; 
-                }
-
-                try {
-                    // Save deposit request to Firebase for admin approval
-                    await db.collection('deposits').add({
-                        userId: state.userId,
-                        amount: amount,
-                        transactionHash: transactionHash,
-                        status: 'pending',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    showNotification(`Deposit request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
-                    dom.depositAmountInput.value = '';
-                    dom.transactionHashInput.value = '';
-                    await saveUserData();
-                } catch (error) {
-                    console.error("Error saving deposit request:", error);
-                    showNotification("Error submitting deposit request. Please try again.", "error");
-                }
-            };
-
-            const handleWithdraw = async () => {
-                const amount = parseFloat(dom.withdrawAmountInput.value);
-                const address = dom.usdtAddressInput.value.trim();
-
-                if (!amount || amount < MIN_WITHDRAWAL) { 
-                    showNotification(`Minimum withdrawal is $${MIN_WITHDRAWAL}.`, 'error'); 
-                    return; 
-                }
-                if (amount > state.usdBalance) { 
-                    showNotification('Insufficient USD balance.', 'error'); 
-                    return; 
-                }
-                if (!address || address.length < 26) { 
-                    showNotification('Please enter a valid USDT TRC20 address.', 'error'); 
-                    return; 
-                }
-
-                try {
-                    // Save withdrawal request to Firebase for admin approval
-                    await db.collection('withdrawals').add({
-                        userId: state.userId,
-                        amount: amount,
-                        usdtAddress: address,
-                        status: 'pending',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    
-                    showNotification(`Withdrawal request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
-                    dom.withdrawAmountInput.value = '';
-                    dom.usdtAddressInput.value = '';
-                    await saveUserData();
-                } catch (error) {
-                    console.error("Error saving withdrawal request:", error);
-                    showNotification("Error processing withdrawal. Please try again.", "error");
-                }
-            };
-            
-            // --- REFERRAL SYSTEM ---
-            const registerReferral = async (referrerId) => {
-                try {
-                    // Update referrer's stats
-                    await db.collection('users').doc(referrerId).update({
-                        referralCount: firebase.firestore.FieldValue.increment(1)
-                    });
-                    
-                    // Mark the new user as referred to prevent re-triggering
-                    await db.collection('users').doc(state.userId).set({
-                        referredBy: referrerId
-                    }, { merge: true });
-
-                    showNotification(`Welcome! You were invited by a friend.`, 'info');
-                } catch (error) {
-                    console.error("Error registering referral:", error);
-                }
-            };
-
-            // --- INITIALIZATION ---
-            const init = async () => {
-                try { 
-                    tg.expand(); 
-                    tg.enableClosingConfirmation(); 
-                } catch (e) { 
-                    console.warn("Telegram script not found. Running in browser mode."); 
-                }
-
-                await loadUserData();
-
-                // Generate referral link
-                const referralLink = `https://t.me/${BOT_USERNAME}?start=${state.userId}`;
-                if (dom.referralLinkTextElement) {
-                    dom.referralLinkTextElement.textContent = referralLink;
-                }
-
-                // Check for referral
-                const startParam = tg.initDataUnsafe?.start_param;
-                if (startParam && startParam.startsWith('tg_')) {
-                    const referrerId = startParam;
-                    if (referrerId && referrerId !== state.userId && !state.referredBy) {
-                        await registerReferral(referrerId);
-                    }
-                }
-                
-                // --- Add All Event Listeners ---
-                dom.tapButton.addEventListener('click', handleTap);
-                dom.submitDepositBtn.addEventListener('click', handleDeposit);
-                dom.withdrawBtn.addEventListener('click', handleWithdraw);
-
-                dom.copyAddressBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(dom.depositAddressTextElement.textContent);
-                    showNotification('Address copied!', 'success');
-                });
-
-                dom.copyRefBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(dom.referralLinkTextElement.textContent);
-                    showNotification('Referral link copied!', 'success');
-                });
-
-                dom.shareLinkBtn.addEventListener('click', () => {
-                    if (tg && tg.openTelegramLink) {
-                        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(dom.referralLinkTextElement.textContent)}&text=${encodeURIComponent('Join me on Coin Switch and start mining!')}`;
-                        tg.openTelegramLink(shareUrl);
-                    } else {
-                        showNotification('Share feature available only in Telegram.', 'info');
-                    }
-                });
-                // --- End of Event Listeners ---
-
-                updateUI();
                 initializePackages();
-                
-                // Start intervals
-                setInterval(passiveMining, 5000);
-                setInterval(updateTapCooldown, 1000);
-                setInterval(saveUserData, 30000); // Save data every 30 seconds
-
-                handleHashLoad(); // Handle initial tab from URL
             };
 
-            // --- TABS, SCROLLING, MOBILE SUPPORT ---
+            // --- TAB SWITCHING ---
             const switchTab = (tabName) => {
                 const tabs = document.querySelectorAll('.tab');
                 const contents = document.querySelectorAll('.tab-content');
+                tabs.forEach(tab => tab.classList.remove('active'));
+                contents.forEach(content => content.classList.remove('active'));
                 
-                tabs.forEach(tab => {
-                    tab.classList.remove('active');
-                    if (tab.dataset.tab === tabName) {
-                        tab.classList.add('active');
-                    }
-                });
-                
-                contents.forEach(content => {
-                    content.classList.remove('active');
-                    if (content.id === `${tabName}-tab`) {
-                        content.classList.add('active');
-                    }
-                });
-                
-                // Update URL hash
-                window.location.hash = tabName;
+                document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
             };
 
-            const handleTabClick = (e) => {
-                const tab = e.target.closest('.tab');
-                if (!tab) return;
-                
-                const tabName = tab.dataset.tab;
-                switchTab(tabName);
-            };
-
-            dom.tabsContainer.addEventListener('click', handleTabClick);
-
-            // Handle URL hash on load
-            const handleHashLoad = () => {
-                const hash = window.location.hash.substring(1);
-                if (hash) {
-                    const tab = document.querySelector(`.tab[data-tab="${hash}"]`);
-                    if (tab) {
-                        switchTab(hash);
-                    }
-                }
-            };
-
-            window.addEventListener('load', handleHashLoad);
-            window.addEventListener('hashchange', handleHashLoad);
-
-            // Start everything
-            init();
-
+            // --- INITIALIZATION ---
+            await loadUserData();
+            updateUI();
+            initializePackages();
+            updateTapCooldown();
+            setInterval(passiveMining, 60000); // Check passive mining every minute
         });
     </script>
 </body>
