@@ -103,7 +103,6 @@
             font-size: 28px;
             font-weight: bold;
             background: linear-gradient(to right, var(--accent), var(--accent-light));
-            background-clip: text; /* <-- এই স্ট্যান্ডার্ড লাইনটি যোগ করুন */
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -720,6 +719,30 @@
             transform: translate(-50%, -50%) scale(1);
         }
 
+        /* Progress Bar for Cooldown */
+        .cooldown-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 5px;
+            background: linear-gradient(to right, var(--accent), var(--accent-light));
+            width: 0%;
+            transition: width 0.1s linear;
+            border-radius: 0 0 25px 25px;
+        }
+
+        /* Tap Counter for Big Bang */
+        .tap-counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+
         /* Mobile-specific adjustments */
         @media (max-width: 480px) {
             .balance-cards {
@@ -801,12 +824,14 @@
         </div>
 
         <div class="tap-area" id="tap-button">
-            <div class="tap-icon"><i class="fas fa-hand-pointer"></i></div>
-            <div class="tap-text">Tap to Mine</div>
-            <div class="tap-subtext" id="tap-cooldown-text">Ready to Tap</div>
+            <div class="tap-counter">Taps: <span id="tap-count">0</span>/12</div>
             <div class="combo-counter" style="position: absolute; top: 10px; right: 10px; background: rgba(255,0,0,0.7); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; display: none;">
                 Combo: <span id="combo-count">0</span>x
             </div>
+            <div class="tap-icon"><i class="fas fa-hand-pointer"></i></div>
+            <div class="tap-text">Tap to Mine</div>
+            <div class="tap-subtext" id="tap-cooldown-text">Ready to Tap</div>
+            <div class="cooldown-progress" id="cooldown-progress"></div>
         </div>
 
         <!-- Tabs -->
@@ -943,12 +968,12 @@
     <!-- Big Bang Notification -->
     <div class="big-bang-notification" id="big-bang-notification">
         <div>BIG BANG!</div>
-        <div style="font-size: 16px; margin-top: 5px;">+12 CS Tokens!</div>
+        <div style="font-size: 16px; margin-top: 5px;">+10 CS Tokens!</div>
     </div>
 
     <script>
         // Firebase configuration - Replace with your Firebase project config
-       const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyCuQF-LPwqDSDEgTdMZMxWe8ThsylWwyZY",
   authDomain: "coinswitchmain-16c88.firebaseapp.com",
   projectId: "coinswitchmain-16c88",
@@ -966,11 +991,12 @@
             // --- CONFIGURATION ---
             const CS_TOKEN_PRICE = 0.05;
             const TAP_REWARD = 0.5;
-            const TAP_COOLDOWN = 5000; // Changed to 5 seconds as requested
+            const TAP_COOLDOWN = 5000; // Changed to 5 seconds
             const HASH_TO_CS_PER_HOUR = 0.05;
             const MIN_WITHDRAWAL = 10;
             const BOT_USERNAME = 'CoinSwitchMiningBot';
-            const COMBO_TIMEOUT = 5000; // 5 seconds to maintain combo
+            const BIG_BANG_TAPS = 12; // Big Bang every 12 taps
+            const COMBO_TIMEOUT = 3000; // 3 seconds to maintain combo
             
             const PACKAGES = [
                 { id: 'basic', title: 'Basic Pack', price: 20, hash_power: 50, bonus_cs: 2, is_premium: false },
@@ -998,7 +1024,8 @@
                 userLevel: 1,
                 userXP: 0,
                 comboCount: 0,
-                lastComboTime: 0
+                lastComboTime: 0,
+                tapCount: 0 // Added tap counter for Big Bang
             };
 
             // --- FIREBASE FUNCTIONS ---
@@ -1112,7 +1139,9 @@
                 comboCount: document.getElementById('combo-count'),
                 userLevel: document.getElementById('user-level'),
                 userXP: document.getElementById('user-xp'),
-                bigBangNotification: document.getElementById('big-bang-notification')
+                bigBangNotification: document.getElementById('big-bang-notification'),
+                tapCount: document.getElementById('tap-count'),
+                cooldownProgress: document.getElementById('cooldown-progress')
             };
 
             // --- UI UPDATE FUNCTIONS ---
@@ -1133,6 +1162,7 @@
                 dom.referralCount.textContent = state.referralCount;
                 dom.userLevel.textContent = state.userLevel;
                 dom.userXP.textContent = state.userXP;
+                dom.tapCount.textContent = state.tapCount;
                 
                 // Update combo counter
                 if (state.comboCount > 1) {
@@ -1161,7 +1191,7 @@
             };
 
             // --- CORE LOGIC ---
-            const handleTap = () => {
+            const handleTap = async (e) => {
                 const now = Date.now();
                 if (now - state.lastTapTime < TAP_COOLDOWN) {
                     const timeLeft = Math.ceil((TAP_COOLDOWN - (now - state.lastTapTime)) / 1000);
@@ -1187,27 +1217,7 @@
 
                 state.lastTapTime = now;
                 state.csBalance += reward;
-
-                // Check for Big Bang (5 consecutive taps)
-                if (state.comboCount === 5) {
-                    const bigBangReward = 12; // Big Bang gives 12 CS tokens
-                    state.csBalance += bigBangReward;
-                    
-                    // Show big bang effect
-                    dom.tapButton.classList.add('bang-effect');
-                    setTimeout(() => {
-                        dom.tapButton.classList.remove('bang-effect');
-                    }, 500);
-                    
-                    // Show big bang notification
-                    dom.bigBangNotification.querySelector('div:last-child').textContent = `+${bigBangReward} CS Tokens!`;
-                    dom.bigBangNotification.classList.add('show');
-                    setTimeout(() => {
-                        dom.bigBangNotification.classList.remove('show');
-                    }, 2000);
-                    
-                    showNotification(`Big Bang! +${bigBangReward} CS Tokens!`, 'success');
-                }
+                state.tapCount++;
 
                 // Add XP
                 state.userXP += 1;
@@ -1217,7 +1227,7 @@
                 flashElement(dom.csBalance);
                 createFloatingCoin(e);
                 updateTapCooldown();
-                saveUserData();
+                await saveUserData();
 
                 // Show combo notification for high combos
                 if (state.comboCount === 5) {
@@ -1225,6 +1235,33 @@
                 } else if (state.comboCount === 10) {
                     showNotification('Combo x3! Triple rewards activated!', 'success');
                 }
+
+                // Check for Big Bang (every 12 taps)
+                if (state.tapCount >= BIG_BANG_TAPS && state.tapCount % BIG_BANG_TAPS === 0) {
+                    triggerBigBang();
+                }
+            };
+            
+            const triggerBigBang = async () => {
+                const bigReward = 10 + (state.userLevel * 2); // Scale with level
+                state.csBalance += bigReward;
+                
+                // Show big bang effect
+                dom.tapButton.classList.add('bang-effect');
+                setTimeout(() => {
+                    dom.tapButton.classList.remove('bang-effect');
+                }, 500);
+                
+                // Show big bang notification
+                dom.bigBangNotification.querySelector('div:last-child').textContent = `+${bigReward} CS Tokens!`;
+                dom.bigBangNotification.classList.add('show');
+                setTimeout(() => {
+                    dom.bigBangNotification.classList.remove('show');
+                }, 2000);
+                
+                updateUI();
+                await saveUserData();
+                showNotification(`Big Bang! +${bigReward} CS Tokens!`, 'success');
             };
             
             const createFloatingCoin = (e) => {
@@ -1242,6 +1279,10 @@
             const updateTapCooldown = () => {
                 const now = Date.now();
                 const timePassed = now - state.lastTapTime;
+                const progressPercentage = Math.min((timePassed / TAP_COOLDOWN) * 100, 100);
+                
+                dom.cooldownProgress.style.width = `${progressPercentage}%`;
+                
                 if (timePassed >= TAP_COOLDOWN) { 
                     dom.tapCooldownText.textContent = "Ready to Tap"; 
                     return; 
@@ -1306,7 +1347,7 @@
                     dom.packagesContainer.appendChild(packageEl);
                 });
                 dom.packagesContainer.addEventListener('click', async (e) => {
-                    if (e.target.dataset.packageId) { // <-- ব্র্যাকেট যোগ করা হয়েছে
+                    if (e.target.dataset.packageId) {
                         await buyPackage(e.target.dataset.packageId);
                     }
                 });
@@ -1322,33 +1363,164 @@
                 }
                 state.usdBalance -= pkg.price;
                 state.hashPower += pkg.hash_power;
-                if (pkg.bonus_cs) {
-                    state.csBalance += pkg.bonus_cs;
-                }
-                state.purchasedPackages.push(pkg.id);
-                showNotification(`Purchased ${pkg.title} successfully!`, 'success');
+                if (pkg.daily_usd) state.dailyUsdReward += pkg.daily_usd;
+                if (pkg.bonus_cs) state.csBalance += pkg.bonus_cs;
+                state.purchasedPackages.push(packageId);
+                showNotification(`${pkg.title} purchased successfully!`, 'success');
                 updateUI();
-                await saveUserData();
                 initializePackages();
+                await saveUserData();
             };
 
-            // --- TAB SWITCHING ---
-            const switchTab = (tabName) => {
-                const tabs = document.querySelectorAll('.tab');
-                const contents = document.querySelectorAll('.tab-content');
-                tabs.forEach(tab => tab.classList.remove('active'));
-                contents.forEach(content => content.classList.remove('active'));
+            const handleDeposit = async () => {
+                const amount = parseFloat(dom.depositAmountInput.value);
+                const transactionHash = dom.transactionHashInput.value.trim();
                 
-                document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
-                document.getElementById(`${tabName}-tab`).classList.add('active');
+                if (!amount || amount <= 0) { 
+                    showNotification('Please enter a valid amount.', 'error'); 
+                    return; 
+                }
+
+                try {
+                    // Save deposit request to Firebase for admin approval
+                    await db.collection('deposits').add({
+                        userId: state.userId,
+                        amount: amount,
+                        transactionHash: transactionHash,
+                        status: 'pending',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showNotification(`Deposit request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
+                    dom.depositAmountInput.value = '';
+                    dom.transactionHashInput.value = '';
+                    await saveUserData();
+                } catch (error) {
+                    console.error("Error saving deposit request:", error);
+                    showNotification("Error submitting deposit request. Please try again.", "error");
+                }
             };
+
+            const handleWithdraw = async () => {
+                const amount = parseFloat(dom.withdrawAmountInput.value);
+                const address = dom.usdtAddressInput.value.trim();
+
+                if (!amount || amount < MIN_WITHDRAWAL) { 
+                    showNotification(`Minimum withdrawal is $${MIN_WITHDRAWAL}.`, 'error'); 
+                    return; 
+                }
+                if (amount > state.usdBalance) { 
+                    showNotification('Insufficient USD balance.', 'error'); 
+                    return; 
+                }
+                if (!address || address.length < 26) { 
+                    showNotification('Please enter a valid USDT TRC20 address.', 'error'); 
+                    return; 
+                }
+
+                try {
+                    // Save withdrawal request to Firebase for admin approval
+                    await db.collection('withdrawals').add({
+                        userId: state.userId,
+                        amount: amount,
+                        usdtAddress: address,
+                        status: 'pending',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    showNotification(`Withdrawal request for $${amount.toFixed(2)} submitted for admin approval.`, 'success');
+                    dom.withdrawAmountInput.value = '';
+                    dom.usdtAddressInput.value = '';
+                    await saveUserData();
+                } catch (error) {
+                    console.error("Error saving withdrawal request:", error);
+                    showNotification("Error processing withdrawal. Please try again.", "error");
+                }
+            };
+            
+            // --- REFERRAL SYSTEM ---
+            const registerReferral = async (referrerId) => {
+                try {
+                    // Update referrer's stats
+                    await db.collection('users').doc(referrerId).update({
+                        referralCount: firebase.firestore.FieldValue.increment(1)
+                    });
+                    
+                    showNotification(`Welcome! You were invited by a friend.`, 'info');
+                } catch (error) {
+                    console.error("Error registering referral:", error);
+                }
+            };
+
+            // --- TABS, SCROLLING, MOBILE SUPPORT ---
+            const switchTab = (tabId) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            };
+            document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
 
             // --- INITIALIZATION ---
-            await loadUserData();
-            updateUI();
-            initializePackages();
-            updateTapCooldown();
-            setInterval(passiveMining, 60000); // Check passive mining every minute
+            const init = async () => {
+                try { 
+                    tg.expand(); 
+                    tg.enableClosingConfirmation(); 
+                } catch (e) { 
+                    console.warn("Telegram script not found. Running in browser mode."); 
+                }
+
+                await loadUserData();
+
+                // Generate referral link
+                const userId = tg.initDataUnsafe?.user?.id || state.userId;
+                const referralLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+                dom.referralLinkTextElement.textContent = referralLink;
+
+                // Check for referral
+                const startParam = tg.initDataUnsafe?.start_param;
+                if (startParam && startParam.startsWith('ref_')) {
+                    const referrerId = startParam.replace('ref_', '');
+                    if (referrerId && referrerId !== state.userId) {
+                        await registerReferral(referrerId);
+                    }
+                }
+
+                initializePackages();
+                updateUI();
+                
+                // Setup event listeners
+                dom.tapButton.addEventListener('click', handleTap);
+                dom.submitDepositBtn.addEventListener('click', handleDeposit);
+                dom.withdrawBtn.addEventListener('click', handleWithdraw);
+                
+                // Copy buttons
+                dom.copyAddressBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(dom.depositAddressText);
+                    showNotification('Address copied to clipboard!', 'success');
+                });
+                
+                dom.copyRefBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(referralLink);
+                    showNotification('Referral link copied!', 'success');
+                });
+                
+                dom.shareLinkBtn.addEventListener('click', () => {
+                    if (tg.isTelegramApp) {
+                        tg.shareLink(referralLink, 'Join Coin Switch and earn rewards!');
+                    } else {
+                        navigator.clipboard.writeText(referralLink);
+                        showNotification('Referral link copied! Share it with your friends.', 'success');
+                    }
+                });
+
+                // Start intervals
+                setInterval(passiveMining, 5000);
+                setInterval(updateTapCooldown, 100);
+                setInterval(saveUserData, 30000);
+            };
+
+            init();
         });
     </script>
 </body>
